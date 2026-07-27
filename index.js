@@ -14,7 +14,7 @@ const ALERT_EMAIL = process.env.ALERT_EMAIL;         // email to receive alerts
 const SMTP_USER = process.env.SMTP_USER;             // Gmail address used to send alerts
 const SMTP_PASS = process.env.SMTP_PASS;             // Gmail app password
 
-const MAX_PAX = 80;
+const MAX_PAX = 2;
 const DATES = ["14th August, Friday - Night", "15th August, Saturday - Afternoon", "16th August, Sunday - Afternoon"];
 
 // In-memory counters (resets if server restarts)
