@@ -15,18 +15,18 @@ const SMTP_USER = process.env.SMTP_USER;             // Gmail address used to se
 const SMTP_PASS = process.env.SMTP_PASS;             // Gmail app password
 
 const MAX_PAX = 80;
-const DATES = ["14 August", "15 August", "16 August"];
+const DATES = ["14th August, Friday - Night", "15th August, Saturday - Afternoon", "16th August, Sunday - Afternoon"];
 
 // In-memory counters (resets if server restarts — see note below)
 const counts = {
-  "14 August": 0,
-  "15 August": 0,
-  "16 August": 0
+  "14th August, Friday - Night": 0,
+  "15th August, Saturday - Afternoon": 0,
+  "16th August, Sunday - Afternoon": 0
 };
 const alerted = {
-  "14 August": false,
-  "15 August": false,
-  "16 August": false
+  "14 August, Friday - Night": false,
+  "15th August, Saturday - Afternoon": false,
+  "16th August, Sunday - Afternoon": false
 };
 
 // ============================================================
