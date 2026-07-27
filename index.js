@@ -42,7 +42,7 @@ app.post("/webhook", async (req, res) => {
   try {
     sdk.webhooks.authenticate(
       req.headers["x-formsg-signature"],
-      `${process.env.RENDER_EXTERNAL_URL}/webhook`
+     `https://movie-night-tracker.onrender.com/webhook`
     );
   } catch (e) {
     console.error("Webhook authentication failed:", e);
