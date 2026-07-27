@@ -85,8 +85,40 @@ app.post("/webhook", async (req, res) => {
 
   let extraTickets = 0;
   if (extraField && extraField.answer) {
-    const parsed = parseInt(extraField.answer, 10);
-    if (!isNaN(parsed)) extraTickets = parsed;
+    const answer = extraField.answer.trim().toLowerCase();
+    
+    if (answer === "nil" || answer === "") {
+      extraTickets = 0;
+    } else if (answer === "+1") {
+      extraTickets = 1;
+    } else if (answer === "+2") {
+      extraTickets = 2;
+    } else {
+      // Handle "Others" free text input - works for both numbers and words
+      const wordToNumber = {
+        "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4,
+        "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
+        "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13,
+        "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
+        "eighteen": 18, "nineteen": 19, "twenty": 20
+      };
+  
+      // First check if the answer contains a word number
+      let found = false;
+      for (const [word, num] of Object.entries(wordToNumber)) {
+        if (answer.includes(word)) {
+          extraTickets = num;
+          found = true;
+          break;
+        }
+      }
+  
+      // If no word number found, try to extract a digit
+      if (!found) {
+        const parsed = parseInt(answer.replace(/\D/g, ""), 10);
+        if (!isNaN(parsed)) extraTickets = parsed;
+      }
+    }
   }
 
   // 5. Add to count (1 for the person themselves + extra tickets)
