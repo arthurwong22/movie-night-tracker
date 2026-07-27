@@ -1,6 +1,6 @@
 const express = require("express");
 const formsg = require("@opengovsg/formsg-sdk");
-const nodemailer = require("nodemailer");
+const sgMail = require("@sendgrid/mail");
 
 const app = express();
 app.use(express.json());
@@ -11,8 +11,10 @@ app.use(express.json());
 const FORMSG_SECRET_KEY = process.env.FORMSG_SECRET_KEY;
 const FORMSG_WEBHOOK_SECRET = process.env.FORMSG_WEBHOOK_SECRET;
 const ALERT_EMAIL = process.env.ALERT_EMAIL;         // email to receive alerts
-const SMTP_USER = process.env.SMTP_USER;             // Gmail address used to send alerts
-const SMTP_PASS = process.env.SMTP_PASS;             // Gmail app password
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL; // must match verified sender in SendGrid
+
+sgMail.setApiKey(SENDGRID_API_KEY);
 
 const MAX_PAX = 2;
 const DATES = ["14th August, Friday - Night", "15th August, Saturday - Afternoon", "16th August, Sunday - Afternoon"];
@@ -105,7 +107,6 @@ app.post("/webhook", async (req, res) => {
     } else if (answer === "+2") {
       extraTickets = 2;
     } else {
-      // Handle "Others" free text input - works for both numbers and words
       const wordToNumber = {
         "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4,
         "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
@@ -175,21 +176,14 @@ app.get("/status", (req, res) => {
 // Email alert function
 // ============================================================
 async function sendAlert(date, count) {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS
-    }
-  });
-
-  await transporter.sendMail({
-    from: SMTP_USER,
+  const msg = {
     to: ALERT_EMAIL,
+    from: SENDGRID_FROM_EMAIL,
     subject: `[Movie Night] ${date} is now FULL (${count} pax)`,
     text: `The screening on ${date} has reached or exceeded the maximum of ${MAX_PAX} pax.\n\nCurrent counts:\n${JSON.stringify(counts, null, 2)}\n\nPlease remove this date from the FormSG form manually.`
-  });
+  };
 
+  await sgMail.send(msg);
   console.log(`Alert sent for ${date}`);
 }
 
