@@ -24,10 +24,11 @@ const counts = {
   "16th August, Sunday - Afternoon": 0
 };
 const alerted = {
-  "14 August, Friday - Night": false,
+  "14th August, Friday - Night": false,
   "15th August, Saturday - Afternoon": false,
   "16th August, Sunday - Afternoon": false
 };
+const seenMobileNumbers = new Set();
 
 // ============================================================
 // FormSG SDK setup
@@ -61,8 +62,23 @@ app.post("/webhook", async (req, res) => {
 
   const responses = submission.responses;
 
-  // 3. Find the screening date answer
-  // Adjust the question field ID or match by fieldType/question text
+  // 3. Check for duplicate mobile number
+  const mobileField = responses.find(r =>
+    r.question && r.question.toLowerCase().includes("mobile")
+  );
+  const mobileNumber = mobileField ? mobileField.answer.trim() : null;
+
+  if (!mobileNumber) {
+    console.log("No mobile number found in submission, skipping.");
+    return res.status(200).send("OK");
+  }
+
+  if (seenMobileNumbers.has(mobileNumber)) {
+    console.log(`Duplicate submission detected for mobile number ${mobileNumber}, skipping.`);
+    return res.status(200).send("OK");
+  }
+
+  // 4. Find the screening date answer
   const dateField = responses.find(r =>
     r.question && r.question.toLowerCase().includes("screening date")
   );
@@ -78,7 +94,7 @@ app.post("/webhook", async (req, res) => {
     return res.status(200).send("OK");
   }
 
-  // 4. Find extra tickets answer and parse the number
+  // 5. Find extra tickets answer and parse the number
   const extraField = responses.find(r =>
     r.question && r.question.toLowerCase().includes("extra ticket")
   );
@@ -121,13 +137,14 @@ app.post("/webhook", async (req, res) => {
     }
   }
 
-  // 5. Add to count (1 for the person themselves + extra tickets)
+  // 6. Register mobile number and add to count
+  seenMobileNumbers.add(mobileNumber);
   const slotsUsed = 1 + extraTickets;
   counts[chosenDate] += slotsUsed;
 
   console.log(`[${chosenDate}] New submission: +${slotsUsed} pax. Total: ${counts[chosenDate]}/${MAX_PAX}`);
 
-  // 6. Send alert if limit reached (only once per date)
+  // 7. Send alert if limit reached (only once per date)
   if (counts[chosenDate] >= MAX_PAX && !alerted[chosenDate]) {
     alerted[chosenDate] = true;
     await sendAlert(chosenDate, counts[chosenDate]);
