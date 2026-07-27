@@ -28,7 +28,7 @@ const alerted = {
   "15th August, Saturday - Afternoon": false,
   "16th August, Sunday - Afternoon": false
 };
-const seenMobileNumbers = new Set();
+const seenMobileNumbers = new Map();
 
 // ============================================================
 // FormSG SDK setup
@@ -73,10 +73,6 @@ app.post("/webhook", async (req, res) => {
     return res.status(200).send("OK");
   }
 
-  if (seenMobileNumbers.has(mobileNumber)) {
-    console.log(`Duplicate submission detected for mobile number ${mobileNumber}, skipping.`);
-    return res.status(200).send("OK");
-  }
 
   // 4. Find the screening date answer
   const dateField = responses.find(r =>
@@ -142,7 +138,26 @@ app.post("/webhook", async (req, res) => {
   const slotsUsed = 1 + extraTickets;
   counts[chosenDate] += slotsUsed;
 
-  console.log(`[${chosenDate}] New submission: +${slotsUsed} pax. Total: ${counts[chosenDate]}/${MAX_PAX}`);
+  console.log(`[${chosenDate}] New submission: +${slotsUsed} pax. Total: ${counts[chosenDate]}/${MAX  // 6. Update count based on whether this is a new or duplicate submission
+  if (seenMobileNumbers.has(mobileNumber)) {
+    const previousSlots = seenMobileNumbers.get(mobileNumber);
+    const newSlots = 1 + extraTickets;
+
+    if (newSlots > previousSlots) {
+      const difference = newSlots - previousSlots;
+      counts[chosenDate] += difference;
+      seenMobileNumbers.set(mobileNumber, newSlots);
+      console.log(`[${chosenDate}] Updated submission for ${mobileNumber}: +${difference} more pax. Total: ${counts[chosenDate]}/${MAX_PAX}`);
+    } else {
+      console.log(`Duplicate submission for ${mobileNumber} with same or fewer tickets, skipping.`);
+      return res.status(200).send("OK");
+    }
+  } else {
+    seenMobileNumbers.set(mobileNumber, 1 + extraTickets);
+    const slotsUsed = 1 + extraTickets;
+    counts[chosenDate] += slotsUsed;
+    console.log(`[${chosenDate}] New submission: +${slotsUsed} pax. Total: ${counts[chosenDate]}/${MAX_PAX}`);
+  }
 
   // 7. Send alert if limit reached (only once per date)
   if (counts[chosenDate] >= MAX_PAX && !alerted[chosenDate]) {
