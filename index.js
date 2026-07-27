@@ -1,5 +1,5 @@
 const express = require("express");
-const formsg = require("@opengovsg/formsg-sdk").default;
+const { FormSG } = require("@opengovsg/formsg-sdk");
 const nodemailer = require("nodemailer");
 
 const app = express();
@@ -32,7 +32,7 @@ const alerted = {
 // ============================================================
 // FormSG SDK setup
 // ============================================================
-const sdk = formsg({ mode: "production" });
+const sdk = new FormSG({ mode: "production" });
 
 // ============================================================
 // Webhook endpoint
