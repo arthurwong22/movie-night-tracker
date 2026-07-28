@@ -176,15 +176,22 @@ function sendTelegramAlert(date, count) {
   return new Promise((resolve, reject) => {
     const message = `Movie Night Alert!\n\n${date} is now FULL (${count}/${MAX_PAX} pax).\n\nCurrent counts:\n${DATES.map(d => `${d}: ${counts[d]}/${MAX_PAX}`).join("\n")}\n\nPlease remove this date from the FormSG form.`;
 
-    const encodedMessage = encodeURIComponent(message);
+    const body = JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: message
+    });
 
     const options = {
       hostname: "api.telegram.org",
-      path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodedMessage}`,
-      method: "GET"
+      path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body)
+      }
     };
 
-    const req = https.request(options, (res) => {
+    const request = https.request(options, (res) => {
       let data = "";
       res.on("data", chunk => data += chunk);
       res.on("end", () => {
@@ -193,12 +200,13 @@ function sendTelegramAlert(date, count) {
       });
     });
 
-    req.on("error", (e) => {
+    request.on("error", (e) => {
       console.error("Telegram alert failed:", e);
       reject(e);
     });
 
-    req.end();
+    request.write(body);
+    request.end();
   });
 }
 
