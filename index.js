@@ -12,7 +12,7 @@ const FORMSG_SECRET_KEY = process.env.FORMSG_SECRET_KEY;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-const MAX_PAX = 10;
+const MAX_PAX = 80;
 const DATES = ["14th August, Friday - Night", "15th August, Saturday - Afternoon", "16th August, Sunday - Afternoon"];
 
 // In-memory counters (resets if server restarts)
