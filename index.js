@@ -1,6 +1,6 @@
 const express = require("express");
 const formsg = require("@opengovsg/formsg-sdk");
-const https = require("https");
+const axios = require("axios");
 
 const app = express();
 app.use(express.json());
@@ -9,7 +9,6 @@ app.use(express.json());
 // CONFIGURATION
 // ============================================================
 const FORMSG_SECRET_KEY = process.env.FORMSG_SECRET_KEY;
-const FORMSG_WEBHOOK_SECRET = process.env.FORMSG_WEBHOOK_SECRET;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
@@ -172,42 +171,22 @@ app.get("/status", (req, res) => {
 // ============================================================
 // Telegram alert function
 // ============================================================
-function sendTelegramAlert(date, count) {
-  return new Promise((resolve, reject) => {
+async function sendTelegramAlert(date, count) {
+  try {
     const message = `Movie Night Alert!\n\n${date} is now FULL (${count}/${MAX_PAX} pax).\n\nCurrent counts:\n${DATES.map(d => `${d}: ${counts[d]}/${MAX_PAX}`).join("\n")}\n\nPlease remove this date from the FormSG form.`;
 
-    const body = JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text: message
-    });
-
-    const options = {
-      hostname: "api.telegram.org",
-      path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(body)
+    const response = await axios.post(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        chat_id: TELEGRAM_CHAT_ID,
+        text: message
       }
-    };
+    );
 
-    const request = https.request(options, (res) => {
-      let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => {
-        console.log("Telegram alert sent:", data);
-        resolve();
-      });
-    });
-
-    request.on("error", (e) => {
-      console.error("Telegram alert failed:", e);
-      reject(e);
-    });
-
-    request.write(body);
-    request.end();
-  });
+    console.log("Telegram alert sent:", response.data);
+  } catch (e) {
+    console.error("Telegram alert failed:", e.message);
+  }
 }
 
 // ============================================================
