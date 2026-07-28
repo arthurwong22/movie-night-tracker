@@ -1,20 +1,17 @@
 const express = require("express");
 const formsg = require("@opengovsg/formsg-sdk");
-const sgMail = require("@sendgrid/mail");
+const https = require("https");
 
 const app = express();
 app.use(express.json());
 
 // ============================================================
-// CONFIGURATION — fill these in as environment variables
+// CONFIGURATION
 // ============================================================
 const FORMSG_SECRET_KEY = process.env.FORMSG_SECRET_KEY;
 const FORMSG_WEBHOOK_SECRET = process.env.FORMSG_WEBHOOK_SECRET;
-const ALERT_EMAIL = process.env.ALERT_EMAIL;         // email to receive alerts
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL; // must match verified sender in SendGrid
-
-sgMail.setApiKey(SENDGRID_API_KEY);
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 const MAX_PAX = 2;
 const DATES = ["14th August, Friday - Night", "15th August, Saturday - Afternoon", "16th August, Sunday - Afternoon"];
@@ -155,7 +152,7 @@ app.post("/webhook", async (req, res) => {
   // 7. Send alert if limit reached (only once per date)
   if (counts[chosenDate] >= MAX_PAX && !alerted[chosenDate]) {
     alerted[chosenDate] = true;
-    await sendAlert(chosenDate, counts[chosenDate]);
+    await sendTelegramAlert(chosenDate, counts[chosenDate]);
   }
 
   return res.status(200).send("OK");
@@ -173,18 +170,44 @@ app.get("/status", (req, res) => {
 });
 
 // ============================================================
-// Email alert function
+// Telegram alert function
 // ============================================================
-async function sendAlert(date, count) {
-  const msg = {
-    to: ALERT_EMAIL,
-    from: SENDGRID_FROM_EMAIL,
-    subject: `[Movie Night] ${date} is now FULL (${count} pax)`,
-    text: `The screening on ${date} has reached or exceeded the maximum of ${MAX_PAX} pax.\n\nCurrent counts:\n${JSON.stringify(counts, null, 2)}\n\nPlease remove this date from the FormSG form manually.`
-  };
+function sendTelegramAlert(date, count) {
+  return new Promise((resolve, reject) => {
+    const message = `🎬 Movie Night Alert!\n\n${date} is now FULL (${count}/${MAX_PAX} pax).\n\nCurrent counts:\n${DATES.map(d => `${d}: ${counts[d]}/${MAX_PAX}`).join("\n")}\n\nPlease remove this date from the FormSG form.`;
 
-  await sgMail.send(msg);
-  console.log(`Alert sent for ${date}`);
+    const body = JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: message
+    });
+
+    const options = {
+      hostname: "api.telegram.org",
+      path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => {
+        console.log("Telegram alert sent:", data);
+        resolve();
+      });
+    });
+
+    req.on("error", (e) => {
+      console.error("Telegram alert failed:", e);
+      reject(e);
+    });
+
+    req.write(body);
+    req.end();
+  });
 }
 
 // ============================================================
