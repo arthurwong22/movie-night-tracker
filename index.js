@@ -12,7 +12,7 @@ const FORMSG_SECRET_KEY = process.env.FORMSG_SECRET_KEY;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-const MAX_PAX = 2;
+const MAX_PAX = 80;
 const DATES = ["14th August, Friday - Night", "15th August, Saturday - Afternoon", "16th August, Sunday - Afternoon"];
 
 // In-memory counters (resets if server restarts)
@@ -22,9 +22,9 @@ const counts = {
   "16th August, Sunday - Afternoon": 0
 };
 const alerted = {
-  "14th August, Friday - Night": false,
-  "15th August, Saturday - Afternoon": false,
-  "16th August, Sunday - Afternoon": false
+  "14th August, Friday - Night": { "50": false, "90": false, "100": false },
+  "15th August, Saturday - Afternoon": { "50": false, "90": false, "100": false },
+  "16th August, Sunday - Afternoon": { "50": false, "90": false, "100": false }
 };
 const seenMobileNumbers = new Map();
 
@@ -148,10 +148,18 @@ app.post("/webhook", async (req, res) => {
     console.log(`[${chosenDate}] New submission: +${slotsUsed} pax. Total: ${counts[chosenDate]}/${MAX_PAX}`);
   }
 
-  // 7. Send alert if limit reached (only once per date)
-  if (counts[chosenDate] >= MAX_PAX && !alerted[chosenDate]) {
-    alerted[chosenDate] = true;
-    await sendTelegramAlert(chosenDate, counts[chosenDate]);
+  // 7. Send alert at 50%, 90%, and 100% thresholds
+  const percentage = (counts[chosenDate] / MAX_PAX) * 100;
+
+  if (percentage >= 100 && !alerted[chosenDate]["100"]) {
+    alerted[chosenDate]["100"] = true;
+    await sendTelegramAlert(chosenDate, counts[chosenDate], 100);
+  } else if (percentage >= 90 && !alerted[chosenDate]["90"]) {
+    alerted[chosenDate]["90"] = true;
+    await sendTelegramAlert(chosenDate, counts[chosenDate], 90);
+  } else if (percentage >= 50 && !alerted[chosenDate]["50"]) {
+    alerted[chosenDate]["50"] = true;
+    await sendTelegramAlert(chosenDate, counts[chosenDate], 50);
   }
 
   return res.status(200).send("OK");
@@ -171,9 +179,18 @@ app.get("/status", (req, res) => {
 // ============================================================
 // Telegram alert function
 // ============================================================
-async function sendTelegramAlert(date, count) {
+async function sendTelegramAlert(date, count, threshold) {
   try {
-    const message = `Movie Night Alert!\n\n${date} is now FULL (${count}/${MAX_PAX} pax).\n\nCurrent counts:\n${DATES.map(d => `${d}: ${counts[d]}/${MAX_PAX}`).join("\n")}\n\nPlease remove this date from the FormSG form.`;
+    let heading;
+    if (threshold === 100) {
+      heading = `🔴 ${date} is now FULL (${count}/${MAX_PAX} pax). Please remove this date from the FormSG form.`;
+    } else if (threshold === 90) {
+      heading = `🟠 ${date} is at 90% capacity (${count}/${MAX_PAX} pax). Almost full!`;
+    } else if (threshold === 50) {
+      heading = `🟡 ${date} is at 50% capacity (${count}/${MAX_PAX} pax). Halfway there!`;
+    }
+
+    const message = `Movie Night Alert!\n\n${heading}\n\nCurrent counts:\n${DATES.map(d => `${d}: ${counts[d]}/${MAX_PAX}`).join("\n")}`;
 
     const response = await axios.post(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
@@ -183,7 +200,7 @@ async function sendTelegramAlert(date, count) {
       }
     );
 
-    console.log("Telegram alert sent:", response.data);
+    console.log(`Telegram alert sent (${threshold}%):`, response.data);
   } catch (e) {
     console.error("Telegram alert failed:", e.message);
   }
