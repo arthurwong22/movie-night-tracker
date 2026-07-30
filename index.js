@@ -13,19 +13,20 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 const MAX_PAX = 80;
-const DATES = ["14th August, Friday - Night", "15th August, Saturday - Afternoon", "16th August, Sunday - Afternoon"];
+const DATES = ["14th August, Friday - 8pm (Entry at 7:45pm)", "15th August, Saturday - 4pm (Entry at 3:45pm)", "16th August, Sunday - 4pm (Entry at 3:45pm)"];
 
-// In-memory counters (resets if server restarts)
 const counts = {
-  "14th August, Friday - Night": 0,
-  "15th August, Saturday - Afternoon": 0,
-  "16th August, Sunday - Afternoon": 0
+  "14th August, Friday - 8pm (Entry at 7:45pm)": 0,
+  "15th August, Saturday - 4pm (Entry at 3:45pm)": 0,
+  "16th August, Sunday - 4pm (Entry at 3:45pm)": 0
 };
+
 const alerted = {
-  "14th August, Friday - Night": { "50": false, "90": false, "100": false },
-  "15th August, Saturday - Afternoon": { "50": false, "90": false, "100": false },
-  "16th August, Sunday - Afternoon": { "50": false, "90": false, "100": false }
+  "14th August, Friday - 8pm (Entry at 7:45pm)": { "50": false, "90": false, "100": false },
+  "15th August, Saturday - 4pm (Entry at 3:45pm)": { "50": false, "90": false, "100": false },
+  "16th August, Sunday - 4pm (Entry at 3:45pm)": { "50": false, "90": false, "100": false }
 };
+
 const seenMobileNumbers = new Map();
 
 // ============================================================
