@@ -212,3 +212,49 @@ async function sendTelegramAlert(date, count, threshold) {
 // ============================================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// ============================================================
+// Telegram bot command polling
+// ============================================================
+let lastUpdateId = 0;
+
+async function pollTelegramCommands() {
+  try {
+    const response = await axios.get(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`
+    );
+
+    const updates = response.data.result;
+
+    for (const update of updates) {
+      lastUpdateId = update.update_id;
+
+      const message = update.message;
+      if (!message || !message.text) continue;
+
+      if (message.text.toLowerCase().includes("/status")) {
+        const statusMessage = `📊 Current Movie Night Counts:\n\n${DATES.map(d => {
+          const count = counts[d];
+          const percentage = Math.round((count / MAX_PAX) * 100);
+          return `${d}\n${count}/${MAX_PAX} pax (${percentage}%)`;
+        }).join("\n\n")}`;
+
+        await axios.post(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: statusMessage
+          }
+        );
+      }
+    }
+  } catch (e) {
+    console.error("Telegram polling error:", e.message);
+  }
+
+  // Poll again after 3 seconds
+  setTimeout(pollTelegramCommands, 3000);
+}
+
+// Start polling
+pollTelegramCommands();
